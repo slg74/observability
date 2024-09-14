@@ -4,26 +4,7 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#define MAX_LINE 512
 #define BUF 512
-
-// Function to read a single value from a file
-double read_value_from_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return -1;
-    }
-
-    char line[MAX_LINE];
-    if (fgets(line, sizeof(line), file) != NULL) {
-        fclose(file);
-        return atof(line);
-    }
-
-    fclose(file);
-    return -1;
-}
 
 // Function to get CPU utilization
 double get_cpu_utilization() {
@@ -72,33 +53,6 @@ double get_memory_saturation() {
     return (used * 100.0) / total;
 
 }
-
-// Function to get disk I/O errors
-/*
-int get_disk_io_errors() {
-    FILE *file = fopen("/sys/block/sda/stat", "r");
-    if (file == NULL) {
-        perror("Error opening /sys/block/sda/stat");
-        return -1;
-    }
-
-    unsigned long long read_ios, read_merges, read_sectors, read_ticks;
-    unsigned long long write_ios, write_merges, write_sectors, write_ticks;
-    unsigned long long in_flight, io_ticks, time_in_queue;
-    int read_errors, write_errors;
-
-    if (fscanf(file, "%llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %d %d",
-               &read_ios, &read_merges, &read_sectors, &read_ticks,
-               &write_ios, &write_merges, &write_sectors, &write_ticks,
-               &in_flight, &io_ticks, &time_in_queue,
-               &read_errors, &write_errors) != 13) {
-        fclose(file);
-        return -1;
-    }
-
-    fclose(file);
-    return read_errors + write_errors;
-}*/
 
 int get_disk_io_errors() {
     DIR *dir;
