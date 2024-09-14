@@ -6,6 +6,8 @@
 
 #define BUF 512
 
+static int prev_disk_errors = -1;
+
 // Function to get CPU utilization
 double get_cpu_utilization() {
     static unsigned long long prev_idle = 0, prev_total = 0;
@@ -54,6 +56,43 @@ double get_memory_saturation() {
 
 }
 
+int raspi_get_disk_io_errors() {
+    const char *device = "mmcblk0"; // Main storage device on Raspberry Pi
+    char path[BUF];
+    int total_errors = 0;
+    snprintf(path, sizeof(path), "/sys/block/%s/stat", device);
+
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        return -1; // Unable to open file
+    }
+
+    unsigned long long fields[14];
+    int read = 0;
+    for (int i = 0; i < 14; i++) {
+        if (fscanf(file, "%llu", &fields[i]) != 1) break;
+        read++;
+    }
+    fclose(file);
+
+    if (read >= 14) {
+        total_errors += fields[3] + fields[7]; // Sum of read errors and write errors
+        int current_errors = total_errors;
+        int delta_errors;
+
+        if (prev_disk_errors == -1) {
+            delta_errors = 0; 
+        } else {
+            delta_errors = current_errors - prev_disk_errors; 
+        }
+
+        prev_disk_errors = current_errors; 
+        return delta_errors;
+    }
+
+    return -1; // Unable to read all fields
+}
+
 int get_disk_io_errors() {
     DIR *dir;
     struct dirent *ent;
@@ -83,6 +122,18 @@ int get_disk_io_errors() {
 
         if (read >= 14) {
             total_errors += fields[12] + fields[13]; // Read errors + Write errors
+
+            int current_errors = total_errors;
+            int delta_errors;
+
+            if (prev_disk_errors == -1) {
+                delta_errors = 0; 
+            } else {
+                delta_errors = current_errors - prev_disk_errors; 
+            }
+
+            prev_disk_errors = current_errors; 
+            return delta_errors;
         }
     }
 
@@ -90,15 +141,42 @@ int get_disk_io_errors() {
     return total_errors;
 }
 
+int is_raspberry_pi() {
+    FILE *cpuinfo = fopen("/proc/cpuinfo", "r");
+    char line[256];
+    int is_pi = 0;
+
+    if (cpuinfo == NULL) {
+        return 0;
+    }
+
+    while (fgets(line, sizeof(line), cpuinfo)) {
+        if (strstr(line, "Raspberry Pi") != NULL) {
+            is_pi = 1;
+            break;
+        }
+    }
+
+    fclose(cpuinfo);
+    return is_pi;
+}
+
 int main() {
-    // Print header
+
     printf("%-25s %-25s %-25s\n", "CPU Utilization", "Memory Saturation", "Disk I/O Errors");
     printf("-------------------------------------------------------------------------\n");
 
     while (1) {
         double cpu_util = get_cpu_utilization();
         double mem_sat = get_memory_saturation();
-        int disk_errors = get_disk_io_errors();
+
+        int disk_errors = 0; 
+
+        if (is_raspberry_pi()) {
+            disk_errors = raspi_get_disk_io_errors(); 
+        } else {
+            disk_errors = get_disk_io_errors();
+        }
 
         char cpu_str[26], mem_str[26], disk_str[26];
 
