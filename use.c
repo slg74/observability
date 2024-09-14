@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 
-#define MAX_LINE 256
+#define MAX_LINE 512
+#define BUF 512
 
 // Function to read a single value from a file
 double read_value_from_file(const char *filename) {
@@ -57,12 +59,12 @@ double get_memory_saturation() {
         return -1;
     }
 
-    char line[256];
+    char line[BUF];
     while (fgets(line, sizeof(line), file)) {
-        if (sscanf(line, "MemTotal: %llu kB", &total) == 1) continue;
-        if (sscanf(line, "MemFree: %llu kB", &free) == 1) continue;
-        if (sscanf(line, "Buffers: %llu kB", &buffers) == 1) continue;
-        if (sscanf(line, "Cached: %llu kB", &cached) == 1) break;
+        if (sscanf(line, "MemTotal: %lu kB", &total) == 1) continue;
+        if (sscanf(line, "MemFree: %lu kB", &free) == 1) continue;
+        if (sscanf(line, "Buffers: %lu kB", &buffers) == 1) continue;
+        if (sscanf(line, "Cached: %lu kB", &cached) == 1) break;
     }
     fclose(file);
 
@@ -72,6 +74,7 @@ double get_memory_saturation() {
 }
 
 // Function to get disk I/O errors
+/*
 int get_disk_io_errors() {
     FILE *file = fopen("/sys/block/sda/stat", "r");
     if (file == NULL) {
@@ -95,19 +98,68 @@ int get_disk_io_errors() {
 
     fclose(file);
     return read_errors + write_errors;
+}*/
+
+int get_disk_io_errors() {
+    DIR *dir;
+    struct dirent *ent;
+    int total_errors = 0;
+    char path[BUF];
+
+    dir = opendir("/sys/block/");
+    if (dir == NULL) {
+        perror("Error opening /sys/block/");
+        return -1;
+    }
+
+    while ((ent = readdir(dir)) != NULL) {
+        if (ent->d_name[0] == '.') continue; // Skip hidden files
+
+        snprintf(path, sizeof(path), "/sys/block/%s/stat", ent->d_name);
+        FILE *file = fopen(path, "r");
+        if (file == NULL) continue; // Skip if can't open file
+
+        unsigned long long fields[14];
+        int read = 0;
+        for (int i = 0; i < 14; i++) {
+            if (fscanf(file, "%llu", &fields[i]) != 1) break;
+            read++;
+        }
+        fclose(file);
+
+        if (read >= 14) {
+            total_errors += fields[12] + fields[13]; // Read errors + Write errors
+        }
+    }
+
+    closedir(dir);
+    return total_errors;
 }
 
 int main() {
+    // Print header
+    printf("%-25s %-25s %-25s\n", "CPU Utilization", "Memory Saturation", "Disk I/O Errors");
+    printf("-------------------------------------------------------------------------\n");
+
     while (1) {
         double cpu_util = get_cpu_utilization();
         double mem_sat = get_memory_saturation();
         int disk_errors = get_disk_io_errors();
 
-        printf("CPU Utilization: %.2f%%\n", cpu_util);
-        printf("Memory Saturation: %.2f%%\n", mem_sat);
-        printf("Disk I/O Errors: %d\n", disk_errors);
-        printf("-----------------------------\n");
+        char cpu_str[26], mem_str[26], disk_str[26];
 
+        snprintf(cpu_str, sizeof(cpu_str), "%.2f%%", cpu_util);
+        snprintf(mem_str, sizeof(mem_str), "%.2f%%", mem_sat);
+
+        if (disk_errors >= 0) {
+            snprintf(disk_str, sizeof(disk_str), "%d", disk_errors);
+        } else {
+            snprintf(disk_str, sizeof(disk_str), "Unable to read");
+        }
+
+        printf("%-25s %-25s %-25s\n", cpu_str, mem_str, disk_str);
+
+        fflush(stdout);  // Ensure output is displayed immediately
         sleep(1);  // Wait for 1 second before collecting metrics again
     }
 
