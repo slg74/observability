@@ -94,51 +94,47 @@ int raspi_get_disk_io_errors() {
 }
 
 int get_disk_io_errors() {
-    DIR *dir;
-    struct dirent *ent;
-    int total_errors = 0;
-    char path[BUF];
-
-    dir = opendir("/sys/block/");
-    if (dir == NULL) {
-        perror("Error opening /sys/block/");
+    FILE *file = fopen("/proc/diskstats", "r");
+    if (file == NULL) {
+        perror("Error opening /proc/diskstats");
         return -1;
     }
 
-    while ((ent = readdir(dir)) != NULL) {
-        if (ent->d_name[0] == '.') continue; // Skip hidden files
+    char line[256];
+    unsigned long long read_errors = 0, write_errors = 0;
+    int total_errors = 0;
 
-        snprintf(path, sizeof(path), "/sys/block/%s/stat", ent->d_name);
-        FILE *file = fopen(path, "r");
-        if (file == NULL) continue; // Skip if can't open file
-
+    while (fgets(line, sizeof(line), file)) {
         unsigned long long fields[14];
-        int read = 0;
-        for (int i = 0; i < 14; i++) {
-            if (fscanf(file, "%llu", &fields[i]) != 1) break;
-            read++;
-        }
-        fclose(file);
+        int major, minor;
+        char dev_name[32];
 
-        if (read >= 14) {
-            total_errors += fields[12] + fields[13]; // Read errors + Write errors
-
-            int current_errors = total_errors;
-            int delta_errors;
-
-            if (prev_disk_errors == -1) {
-                delta_errors = 0; 
-            } else {
-                delta_errors = current_errors - prev_disk_errors; 
-            }
-
-            prev_disk_errors = current_errors; 
-            return delta_errors;
+        if (sscanf(line, "%d %d %s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                   &major, &minor, dev_name,
+                   &fields[0], &fields[1], &fields[2], &fields[3],
+                   &fields[4], &fields[5], &fields[6], &fields[7],
+                   &fields[8], &fields[9], &fields[10]) == 14) {
+            
+            // Fields[2] is read_errors, fields[6] is write_errors
+            read_errors += fields[2];
+            write_errors += fields[6];
         }
     }
 
-    closedir(dir);
-    return total_errors;
+    fclose(file);
+
+    total_errors = read_errors + write_errors;
+    int current_errors = total_errors;
+    int delta_errors;
+
+    if (prev_disk_errors == -1) {
+        delta_errors = 0;
+    } else {
+        delta_errors = current_errors - prev_disk_errors;
+    }
+
+    prev_disk_errors = current_errors;
+    return delta_errors;
 }
 
 int is_raspberry_pi() {
