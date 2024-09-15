@@ -21,6 +21,10 @@ void run_command(const char* command, char* output) {
     pclose(fp);
 }
 
+double kb_to_gb(long kb) {
+    return kb / (1024.0 * 1024.0);
+}
+
 void print_colored(const char* label, const char* value, int exceeded) {
     printf("%-*s : %s%*s%s\n", 
            LABEL_WIDTH, label, 
@@ -48,14 +52,16 @@ int main() {
     // Free
     run_command("free | awk '/^Mem:/ {print $7}'", output);
     sscanf(output, "%ld", &available_mem);
-    snprintf(output, MAX_OUTPUT, "%ld KB", available_mem);
+    snprintf(output, MAX_OUTPUT, "%.2f GB", kb_to_gb(available_mem));
     print_colored("Free (Available Memory)", output, available_mem == 0);
 
     // VMstat
     run_command("vmstat | tail -n 1 | awk '{print $4}'", output);
     sscanf(output, "%ld", &free_mem);
-    snprintf(output, MAX_OUTPUT, "%ld KB", free_mem);
-    print_colored("VMstat (Free Memory)", output, free_mem < total_mem);
+    long mem_threshold = total_mem * 0.1; // 10% of total memory
+    snprintf(output, MAX_OUTPUT, "%.2f GB", kb_to_gb(free_mem));
+    print_colored("VMstat (Free Memory)", output, free_mem < mem_threshold);
+
 
     // IOstat
     run_command("iostat | grep -A 1 avg-cpu | tail -n 1 | awk '{print $4}'", output);
