@@ -14,11 +14,11 @@
 #define RED "\033[41m"
 #define RESET "\033[0m"
 
-double kb_to_gb(long kb) {
+static double kb_to_gb(long kb) {
     return kb / (1024.0 * 1024.0);
 }
 
-void run_command(const char* command, char* output, size_t output_size) {
+static void run_command(const char* command, char* output, size_t output_size) {
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         perror("pipe");
@@ -52,7 +52,7 @@ void run_command(const char* command, char* output, size_t output_size) {
     }
 }
 
-void print_colored(const char* label, const char* value, int exceeded) {
+static void print_colored(const char* label, const char* value, int exceeded) {
     printf("%-*s : %s%*s%s\n", 
            LABEL_WIDTH, label, 
            exceeded ? RED : GREEN, 
