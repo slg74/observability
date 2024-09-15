@@ -51,7 +51,7 @@ int main() {
     snprintf(output, MAX_OUTPUT, "%ld KB", available_mem);
     print_colored("Free (Available Memory)", output, available_mem == 0);
 
-        // VMstat
+    // VMstat
     run_command("vmstat | tail -n 1 | awk '{print $4}'", output);
     sscanf(output, "%ld", &free_mem);
     snprintf(output, MAX_OUTPUT, "%ld KB", free_mem);
