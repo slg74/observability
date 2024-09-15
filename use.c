@@ -13,6 +13,8 @@
 
 static long long prev_disk_errors = -1;
 
+int is_raspberry_pi(void);
+
 double get_cpu_utilization(void) {
     static unsigned long long prev_idle = 0, prev_total = 0;
     unsigned long long user, nice, system, idle, iowait, irq, softirq, steal, total;
@@ -90,7 +92,44 @@ double get_memory_saturation(void) {
     return (used * 100.0) / total;
 }
 
+int raspi_get_disk_io_errors() {
+    const char *device = "mmcblk0"; // Main storage device on Raspberry Pi
+    char path[BUF_SIZE];
+    long long total_errors = 0;
+    snprintf(path, sizeof(path), "/sys/block/%s/stat", device);
+
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {
+        return -1; // Unable to open file
+    }
+
+    char buffer[BUF_SIZE];
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+        unsigned long long fields[14] = {0};
+        int read = sscanf(buffer, "%llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                          &fields[0], &fields[1], &fields[2], &fields[3], &fields[4], &fields[5], &fields[6],
+                          &fields[7], &fields[8], &fields[9], &fields[10], &fields[11], &fields[12], &fields[13]);
+        if (read == 14) {
+            total_errors = fields[3] + fields[7]; // Sum of read errors and write errors
+        }
+    }
+
+    long long delta_errors = (prev_disk_errors == -1) ? 0 : total_errors - prev_disk_errors;
+    prev_disk_errors = total_errors;
+    return (int)delta_errors;
+}
+
+
 int get_disk_io_errors(void) {
+
+    if (is_raspberry_pi()) {
+        return raspi_get_disk_io_errors();
+    }
+
     DIR *dir;
     struct dirent *ent;
     long long total_errors = 0;
