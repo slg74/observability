@@ -193,10 +193,15 @@ int is_raspberry_pi(void) {
 }
 
 int main(void) {
-    //if (setuid(65534) != 0 || setgid(65534) != 0) {
-    //    perror("Failed to drop privileges");
-    //    return EXIT_FAILURE;
-    //}
+
+    // Drop privileges if running as root
+    if (getuid() == 0) {
+        if (setgid(65534) != 0 || setuid(65534) != 0) {
+            perror("Failed to drop privileges");
+            exit(EXIT_FAILURE);
+        }
+    }
+
 
     printf("%-25s %-25s %-25s\n", "CPU Utilization", "Memory Saturation", "Disk I/O Errors");
     printf("-------------------------------------------------------------------------\n");
