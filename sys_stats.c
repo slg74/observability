@@ -1,50 +1,71 @@
-
-#include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 typedef enum {
-    OP_ADD,
-    OP_SUBTRACT,
-    OP_MULTIPLY,
-    OP_DIVIDE
+    OP_INT_ADD,
+    OP_INT_SUBTRACT,
+    OP_INT_MULTIPLY,
+    OP_INT_DIVIDE,
+    OP_FLOAT_ADD,
+    OP_FLOAT_MULTIPLY,
+    OP_FLOAT_DIVIDE,
+    OP_SINE,
+    OP_COSINE,
+    OP_TANGENT,
+    OP_ARCTANGENT
+
 } Operation;
 
 double measure_operation_speed(Operation op) {
     const long long num_operations = 1000000000LL; // 1 billion operations
     long long i;
-    volatile long long result = 1; // Initialize to 1 for multiply and divide
+    volatile long long int_result = 1;
+    volatile double float_result = 1.0;
 
     clock_t start = clock();
 
     switch (op) {
-        case OP_ADD:
-            for (i = 0; i < num_operations; i++) {
-                result += 1;
-            }
+        case OP_INT_ADD:
+            for (i = 0; i < num_operations; i++) int_result += 1;
             break;
-        case OP_SUBTRACT:
-            for (i = 0; i < num_operations; i++) {
-                result -= 1;
-            }
+        case OP_INT_SUBTRACT:
+            for (i = 0; i < num_operations; i++) int_result -= 1;
             break;
-        case OP_MULTIPLY:
-            for (i = 0; i < num_operations; i++) {
-                result *= 2;
-            }
+        case OP_INT_MULTIPLY:
+            for (i = 0; i < num_operations; i++) int_result *= 2;
             break;
-        case OP_DIVIDE:
-            for (i = 0; i < num_operations; i++) {
-                result /= 2;
-            }
+        case OP_INT_DIVIDE:
+            for (i = 0; i < num_operations; i++) int_result /= 2;
+            break;
+        case OP_FLOAT_ADD:
+            for (i = 0; i < num_operations; i++) float_result += 1.0;
+            break;
+        case OP_FLOAT_MULTIPLY:
+            for (i = 0; i < num_operations; i++) float_result *= 1.01;
+            break;
+        case OP_FLOAT_DIVIDE:
+            for (i = 0; i < num_operations; i++) float_result /= 1.01;
+            break;
+        case OP_SINE:
+            for (i = 0; i < num_operations; i++) float_result = sin(float_result);
+            break;
+        case OP_COSINE:
+            for (i = 0; i < num_operations; i++) float_result = cos(float_result);
+            break;
+        case OP_TANGENT:
+            for (i = 0; i < num_operations; i++) float_result = tan(float_result);
+            break;
+        case OP_ARCTANGENT:
+            for (i = 0; i < num_operations; i++) float_result = atan(float_result);
             break;
     }
 
     clock_t end = clock();
 
     double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    double operations_per_second = num_operations / cpu_time_used;
-
-    return operations_per_second;
+    return num_operations / cpu_time_used;
 }
 
 double ops_per_second_to_ns_per_op(double ops_per_second) {
@@ -57,15 +78,17 @@ void print_operation_speed(const char* op_name, double ops_per_second) {
 }
 
 int main() {
-    double add_speed = measure_operation_speed(OP_ADD);
-    double subtract_speed = measure_operation_speed(OP_SUBTRACT);
-    double multiply_speed = measure_operation_speed(OP_MULTIPLY);
-    double divide_speed = measure_operation_speed(OP_DIVIDE);
+    print_operation_speed("Integer Addition", measure_operation_speed(OP_INT_ADD));
+    print_operation_speed("Integer Subtraction", measure_operation_speed(OP_INT_SUBTRACT));
+    print_operation_speed("Integer Multiplication", measure_operation_speed(OP_INT_MULTIPLY));
+    print_operation_speed("Integer Division", measure_operation_speed(OP_INT_DIVIDE));
+    print_operation_speed("Float Addition", measure_operation_speed(OP_FLOAT_ADD));
+    print_operation_speed("Float Multiplication", measure_operation_speed(OP_FLOAT_MULTIPLY));
+    print_operation_speed("Float Division", measure_operation_speed(OP_FLOAT_DIVIDE));
+    print_operation_speed("Sine", measure_operation_speed(OP_SINE));
+    print_operation_speed("Cosine", measure_operation_speed(OP_COSINE));
+    print_operation_speed("Tangent", measure_operation_speed(OP_TANGENT));
+    print_operation_speed("Arctangent", measure_operation_speed(OP_ARCTANGENT));
 
-    print_operation_speed("Addition", add_speed);
-    print_operation_speed("Subtraction", subtract_speed);
-    print_operation_speed("Multiplication", multiply_speed);
-    print_operation_speed("Division", divide_speed);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
