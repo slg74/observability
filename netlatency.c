@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -134,8 +135,13 @@ int main(int argc, char *argv[]) {
             got = 1;
         }
 
-        if (seq < count - 1)
-            usleep((useconds_t)(intv_ms * 1000));
+        if (seq < count - 1) {
+            struct timespec ts = {
+                .tv_sec  = intv_ms / 1000,
+                .tv_nsec = (intv_ms % 1000) * 1000000L
+            };
+            nanosleep(&ts, NULL);
+        }
     }
 
     close(sock);
