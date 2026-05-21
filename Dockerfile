@@ -17,6 +17,10 @@ FROM debian:bookworm-slim
 LABEL org.opencontainers.image.title="o11y" \
       org.opencontainers.image.description="Linux observability toolkit: USE method, netwatch, procwatch, fdwatch, schedlag, netlatency, heaptrack"
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        stress \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /o11y
 
 # Copy all built binaries and the inject shared library
