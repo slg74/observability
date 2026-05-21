@@ -5,6 +5,27 @@ Implements the [USE method](https://www.brendangregg.com/usemethod.html) (Utiliz
 
 ---
 
+## Quick Start
+
+```bash
+# Build the image
+docker build -t o11y:latest .
+
+# Load into your local cluster (pick one)
+kind load docker-image o11y:latest        # kind
+minikube image load o11y:latest           # minikube
+# Docker Desktop: no extra step needed
+
+# Deploy to every node
+kubectl apply -f k8s/daemonset.yaml
+
+# Exec in and start observing
+POD=$(kubectl get pod -n monitoring -l app=o11y -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -it -n monitoring $POD -- use
+```
+
+---
+
 ## Tools
 
 | Binary | Description |
